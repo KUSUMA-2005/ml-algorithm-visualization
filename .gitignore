@@ -1,0 +1,104 @@
+# ==========================
+# 🔹 General Git Ignore
+# ==========================
+
+# Ignore system files
+.DS_Store
+Thumbs.db
+
+# Ignore log files and IDE settings
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.vscode/
+.idea/
+*.swp
+
+# ==========================
+# 🔹 Frontend (React) - client/
+# ==========================
+
+# Ignore dependencies
+client/node_modules/
+client/.pnp/
+client/.pnp.js
+
+# Build output
+client/build/
+
+# Environment variables
+client/.env
+client/.env.local
+client/.env.development.local
+client/.env.test.local
+client/.env.production.local
+
+# ==========================
+# 🔹 Node.js Backend - server/
+# ==========================
+
+# Ignore dependencies
+server/node_modules/
+
+# Build output (if using TypeScript or build tools)
+server/dist/
+server/build/
+
+# Logs
+server/logs/
+server/debug.log
+server/error.log
+
+# Environment variables
+server/.env
+
+# ==========================
+# 🔹 Python Backend (Machine Learning) - ml-server/
+# ==========================
+
+# Ignore virtual environment
+ml-server/venv/
+
+# Ignore compiled Python files
+ml-server/__pycache__/
+ml-server/*.pyc
+ml-server/*.pyo
+ml-server/*.pyd
+
+# Jupyter Notebook checkpoints (if using Jupyter)
+ml-server/.ipynb_checkpoints/
+
+# Ignore dataset files (optional, if you have large datasets)
+ml-server/datasets/
+ml-server/data/
+ml-server/*.csv
+ml-server/*.xlsx
+ml-server/*.json
+
+# Ignore environment files
+ml-server/.env
+
+# ==========================
+# 🔹 Miscellaneous
+# ==========================
+
+# Ignore coverage reports (for testing)
+coverage/
+*.cover
+*.lcov
+.nyc_output/
+
+# Ignore production artifacts
+build/
+out/
+
+# Ignore compressed files
+*.zip
+*.tar.gz
+*.rar
+*.7z
+
+# Ignore dependency lock files (optional)
+pnpm-lock.yaml
+ml-algorithm-visualization/
