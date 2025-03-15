@@ -1,69 +1,87 @@
-from flask import Flask, request, jsonify
-from flask_cors import CORS
+from flask import Flask, request, jsonify, Response
 import pandas as pd
-import os
+import time
+import json
+import base64
+import io
+import matplotlib.pyplot as plt
 from sklearn.model_selection import train_test_split
-from sklearn.preprocessing import StandardScaler
+from sklearn.neighbors import KNeighborsClassifier
+from sklearn.svm import SVC
+from sklearn.tree import DecisionTreeClassifier
+from sklearn.naive_bayes import GaussianNB
 from sklearn.linear_model import LogisticRegression
+from sklearn.ensemble import RandomForestClassifier, GradientBoostingClassifier
 
 app = Flask(__name__)
-CORS(app)
 
-# Ensure upload directory exists
-UPLOAD_FOLDER = "uploads"
-app.config["UPLOAD_FOLDER"] = UPLOAD_FOLDER
+# Define available algorithms
+ALGORITHMS = {
+    "KNN": KNeighborsClassifier(n_neighbors=3),
+    "SVM": SVC(),
+    "Decision Tree": DecisionTreeClassifier(),
+    "Naive Bayes": GaussianNB(),
+    "Logistic Regression": LogisticRegression(),
+    "Random Forest": RandomForestClassifier(),
+    "Gradient Boosting": GradientBoostingClassifier(),
+}
 
-import os
-if not os.path.exists(UPLOAD_FOLDER):
-    os.makedirs(UPLOAD_FOLDER)
-
-@app.route("/", methods=["GET"])
+# Route to check if Flask server is running
+@app.route("/")
 def home():
-    return "Hello, Flask is running!"
+    return "Flask Server is Running!"
 
-@app.route("/upload", methods=["POST"])
-def upload_file():
-    if "file" not in request.files:
-        return jsonify({"error": "No file part in request"})
+# Streaming response function for real-time updates
+def train_model_stream(df, algorithm):
+    X = df.iloc[:, :-1]  # Features
+    y = df.iloc[:, -1]   # Target column (last column)
+    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+
+    model = ALGORITHMS.get(algorithm)
+    if not model:
+        yield json.dumps({"error": "Invalid algorithm selected"}) + "\n"
+        return
+
+    accuracy_list = []
+    
+    for i in range(1, 21):  # Simulating iterations
+        model.fit(X_train, y_train)  # Train model
+        accuracy = model.score(X_test, y_test)  # Evaluate model
+        accuracy_list.append(accuracy)
+
+        # Generate graph
+        plt.figure(figsize=(5, 3))
+        plt.plot(range(1, len(accuracy_list) + 1), accuracy_list, marker="o", linestyle="-", color="b")
+        plt.xlabel("Iteration")
+        plt.ylabel("Accuracy")
+        plt.title(f"Training Progress ({algorithm})")
+        plt.grid()
+
+        # Convert graph to Base64 image
+        img_buffer = io.BytesIO()
+        plt.savefig(img_buffer, format="png")
+        plt.close()
+        img_str = base64.b64encode(img_buffer.getvalue()).decode("utf-8")
+
+        # Send iteration update to frontend
+        yield f"data: {json.dumps({'iterations': i, 'accuracy': accuracy, 'graph': img_str})}\n\n"
+        time.sleep(1)
+
+# Train route (using SSE for real-time updates)
+@app.route("/train", methods=["POST"])
+def train():
+    if "file" not in request.files or "algorithm" not in request.form:
+        return jsonify({"error": "File and algorithm are required"}), 400
 
     file = request.files["file"]
-    if file.filename == "":
-        return jsonify({"error": "No selected file"})
+    algorithm = request.form["algorithm"]
 
     try:
-        file_path = f"{UPLOAD_FOLDER}/{file.filename}"
-        file.save(file_path)  # Save file to 'uploads/' folder
-
-        # Read CSV file
-        df = pd.read_csv(file_path)
-
-        # Ensure file is not empty
-        if df.empty:
-            return jsonify({"error": "Uploaded file is empty!"})
-
-        # Split data into X (features) and y (target)
-        X = df.iloc[:, :-1]  
-        y = df.iloc[:, -1]
-
-        # Normalize data
-        from sklearn.preprocessing import StandardScaler
-        scaler = StandardScaler()
-        X = pd.DataFrame(scaler.fit_transform(X), columns=X.columns)
-
-        # Split the dataset into training and testing sets
-        X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
-
-        # Train Logistic Regression model
-        model = LogisticRegression(max_iter=1000)  # Increased max_iter to 1000
-        model.fit(X_train, y_train)
-
-        # Calculate model accuracy
-        accuracy = model.score(X_test, y_test)
-
-        return jsonify({"message": "Model trained successfully", "accuracy": round(accuracy, 4)})
-
+        df = pd.read_csv(file)  # Read CSV file
     except Exception as e:
-        return jsonify({"error": str(e)})
+        return jsonify({"error": str(e)}), 400
+
+    return Response(train_model_stream(df, algorithm), content_type="text/event-stream")
 
 if __name__ == "__main__":
     app.run(debug=True)

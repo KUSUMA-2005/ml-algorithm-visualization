@@ -1,5 +1,5 @@
 import React from "react";
-import Upload from "./upload";
+import Upload from "./components/upload";
 
 function App() {
   return (
